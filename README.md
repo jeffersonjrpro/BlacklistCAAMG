@@ -1,31 +1,27 @@
-﻿#  Sistema de Blacklist de E-mails - CAAMG
+# Sistema de Blacklist - Windows Server + IIS
 
-Sistema completo de gerenciamento de blacklist de e-mails.
+## 📋 Pré-requisitos
 
-## 🌟 Características
+1. **Windows Server** (2016, 2019, 2022)
+2. **IIS** (Internet Information Services)
+3. **Python 3.8+** instalado
+4. **Módulo HttpPlatformHandler** para IIS
 
--  **API REST** completa para gerenciamento de blacklist
--  **Múltiplas plataformas**: Render, Windows Server, Ubuntu Server
--  **Integração simples** com qualquer sistema de e-mail
--  **Links de descadastro** automáticos
--  **Interface web** para descadastramento
+## 🚀 Instalação
 
-##  Deploy Rápido
+### 1. Instalar Python
 
-### Render (Cloud - Gratuito)
-Veja instruções em: `render/README.md`
+# Verificar remote atual
+git remote -v
 
-### Windows Server + IIS
-Veja instruções em: `windows-server/README.md`
+# Remover remote incorreto
+git remote remove origin
 
-### Ubuntu Server
-Veja instruções em: `ubuntu-server/README.md`
+# Adicionar remote correto
+git remote add origin https://github.com/jeffersonjrpro/BlacklistCAAMG.git
 
-##  Autor
+# Verificar se está correto
+git remote -v
 
-**Jefferson Jr**
-- GitHub: [@jeffersonjrpro](https://github.com/jeffersonjrpro)
-
----
-
- **Se este projeto te ajudou, deixe uma estrela!** 
+# Agora tentar push
+git push -u origin main
