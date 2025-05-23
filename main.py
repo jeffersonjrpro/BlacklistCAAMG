@@ -161,64 +161,124 @@ def status():
     
     return jsonify(status_info)
 
-@app.route('/unsubscribe', methods=['GET'])
+@app.route('/unsubscribe')
 def unsubscribe():
-    """Endpoint para descadastramento de emails"""
+    """Descadastrar email da lista"""
     email = request.args.get('email')
+    email_id = request.args.get('id')
+    motivo = request.args.get('motivo', 'Descadastro via API')
+    format_type = request.args.get('format', 'json')
     
-    debug_print(f"=== DESCADASTRO === Email recebido: {email}")
-    
-    if not email:
-        debug_print("Erro: Email não fornecido")
-        return render_error_page("Email obrigatório", "Forneça um email válido.")
-    
-    if not is_valid_email(email):
-        debug_print(f"Erro: Email inválido: {email}")
-        return render_error_page("Email inválido", "Formato de email inválido.")
+    if not email and not email_id:
+        error_msg = 'Email ou ID é obrigatório'
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='error', message=error_msg)
+        return jsonify({'status': 'error', 'message': error_msg}), 400
     
     try:
-        debug_print(f"Tentando inserir no Supabase: {email}")
-        
-        # Inserção no banco
-        result = supabase.table('advs').insert({
-            'email': email,
-            'blacklist': True,
-            'data_bloqueio': datetime.now().isoformat(),
-            'motivo': 'Descadastro via link',
-            'gestor': 'Sistema Windows',
-            'nome': 'Descadastrado'
-        }).execute()
-        
-        debug_print(f"Resultado Supabase: {len(result.data)} registros inseridos")
-        
-        if result.data:
-            debug_print("SUCESSO! Renderizando página de sucesso")
-            return render_success_page(f"Email {email} descadastrado com sucesso!")
-        else:
-            debug_print("FALHA! Nenhum dado retornado")
-            return render_error_page("Erro", "Falha ao descadastrar.")
+        if email_id:
+            # Buscar por hash MD5
+            response = supabase.table('advs').select('*').execute()
+            target_record = None
             
+            for record in response.data:
+                if record.get('email'):
+                    record_hash = hashlib.md5(record['email'].lower().strip().encode()).hexdigest()
+                    if record_hash == email_id.lower():
+                        target_record = record
+                        email = record['email']
+                        break
+            
+            if not target_record:
+                error_msg = 'Email não encontrado'
+                if format_type == 'html':
+                    return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                        status='error', message=error_msg)
+                return jsonify({'status': 'error', 'message': error_msg}), 404
+        
+        # Verificar se email existe na tabela
+        existing = supabase.table('advs').select('*').eq('email', email.lower().strip()).execute()
+        
+        if existing.data:
+            # Atualizar registro existente - USAR data_bloqueio
+            response = supabase.table('advs').update({
+                'blacklist': True,
+                'data_bloqueio': datetime.now().isoformat(),  # CORRIGIDO
+                'motivo': motivo
+            }).eq('email', email.lower().strip()).execute()
+        else:
+            # Criar novo registro - USAR data_bloqueio
+            response = supabase.table('advs').insert({
+                'email': email.lower().strip(),
+                'blacklist': True,
+                'data_bloqueio': datetime.now().isoformat(),  # CORRIGIDO
+                'motivo': motivo,
+                'nome': 'Descadastrado'
+            }).execute()
+        
+        logger.info(f"✅ Email {email} adicionado à blacklist")
+        
+        success_msg = f'Email {email} descadastrado com sucesso!'
+        timestamp = datetime.now().isoformat()
+        
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='success', email=email, motivo=motivo, timestamp=timestamp)
+        
+        return jsonify({
+            'status': 'success',
+            'message': success_msg,
+            'email': email,
+            'motivo': motivo,
+            'timestamp': timestamp,
+            'server': 'Ubuntu Server'
+        })
+        
     except Exception as e:
-        debug_print(f"ERRO: {str(e)}")
-        debug_print(f"Traceback: {traceback.format_exc()}")
-        return render_error_page("Erro interno", f"Erro: {str(e)}")
+        logger.error(f"❌ Erro ao processar unsubscribe: {str(e)}")
+        error_msg = f'Erro interno: {str(e)}'
+        
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='error', message=error_msg)
+        
+        return jsonify({
+            'status': 'error',
+            'message': 'Erro interno do servidor',
+            'error': str(e),
+            'server': 'Ubuntu Server'
+        }), 500
 
 @app.route('/blacklist')
 def get_blacklist():
-    """Rota que retorna todos os emails na blacklist"""
+    """Listar todos os emails na blacklist"""
     try:
-        response = supabase.table('advs').select('email, data_bloqueio, motivo').eq('blacklist', True).execute()
+        response = supabase.table('advs').select('email, data_bloqueio, motivo, nome').eq('blacklist', True).execute()  # CORRIGIDO
+        
+        blacklist_data = []
+        for record in response.data:
+            blacklist_data.append({
+                'email': record.get('email'),
+                'data_bloqueio': record.get('data_bloqueio'),  # CORRIGIDO
+                'motivo': record.get('motivo'),
+                'nome': record.get('nome')
+            })
+        
         return jsonify({
             'status': 'success',
-            'total': len(response.data),
-            'blacklist': response.data,
-            'server': 'Windows Server + IIS'
+            'total': len(blacklist_data),
+            'blacklist': blacklist_data,
+            'server': 'Ubuntu Server',
+            'timestamp': datetime.now().isoformat()
         })
+        
     except Exception as e:
+        logger.error(f"❌ Erro ao buscar blacklist: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': 'Erro ao carregar blacklist',
-            'error': str(e)
+            'error': str(e),
+            'server': 'Ubuntu Server'
         }), 500
 
 @app.route('/blacklist/hashes')
