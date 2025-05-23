@@ -107,27 +107,19 @@ UNSUBSCRIBE_TEMPLATE = """
             line-height: 1.6;
             margin-bottom: 30px;
         }
-        .details {
+        .email-display {
             background: #f8f9fa;
             border-radius: 10px;
             padding: 20px;
             margin: 20px 0;
-            text-align: left;
+            border-left: 4px solid #3498db;
         }
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ecf0f1;
+        .email-text {
+            font-family: monospace;
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 600;
         }
-        .detail-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-        .label { font-weight: 600; color: #34495e; }
-        .value { color: #7f8c8d; }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
@@ -140,20 +132,13 @@ UNSUBSCRIBE_TEMPLATE = """
             font-weight: bold;
             font-size: 18px;
         }
-        .btn {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 25px;
-            text-decoration: none;
+        .contact-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
             margin-top: 20px;
-            transition: all 0.3s ease;
-        }
-        .btn:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+            font-size: 14px;
+            color: #2c3e50;
         }
     </style>
 </head>
@@ -164,25 +149,19 @@ UNSUBSCRIBE_TEMPLATE = """
             <h1>Descadastro Realizado!</h1>
             <p class="message">Seu e-mail foi removido da nossa lista de contatos com sucesso.</p>
             
-            <div class="details">
-                <div class="detail-item">
-                    <span class="label">📧 E-mail:</span>
-                    <span class="value">{{ email }}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="label">📅 Data:</span>
-                    <span class="value">{{ timestamp[:19].replace('T', ' ') }}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="label">📝 Motivo:</span>
-                    <span class="value">{{ motivo }}</span>
-                </div>
+            <div class="email-display">
+                <div class="email-text">📧 {{ email }}</div>
             </div>
             
             <p class="message">
                 <strong>Você não receberá mais e-mails desta lista.</strong><br>
-                Caso tenha feito isso por engano, entre em contato conosco.
+                Obrigado por ter feito parte da nossa comunidade.
             </p>
+            
+            <div class="contact-info">
+                <strong>Descadastro por engano?</strong><br>
+                Entre em contato conosco através do nosso site oficial.
+            </div>
         {% else %}
             <div class="icon error">❌</div>
             <h1>Erro no Descadastro</h1>
@@ -192,7 +171,7 @@ UNSUBSCRIBE_TEMPLATE = """
         
         <div class="footer">
             <div class="logo">CAAMG</div>
-            <p>Conselho de Arquitetura e Urbanismo de Minas Gerais</p>
+            
         </div>
     </div>
 </body>
