@@ -50,92 +50,260 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
-def render_success_page(message):
-    """Renderiza página de sucesso para descadastramento"""
-    return f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Descadastramento Realizado</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
-            .success {{ background: #e6ffe6; border: 1px solid #99ff99; padding: 20px; border-radius: 8px; text-align: center; }}
-            .icon {{ font-size: 48px; margin-bottom: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="success">
-            <div class="icon">✅</div>
-            <h2>Descadastramento Realizado com Sucesso!</h2>
-            <p>{message}</p>
-            <p><small>Você não receberá mais e-mails desta lista.</small></p>
+# Template HTML moderno para descadastro
+UNSUBSCRIBE_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if status == 'success' %}Descadastro Realizado{% else %}Erro no Descadastro{% endif %} - CAAMG</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .message {
+            color: #7f8c8d;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .details {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .detail-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .label { font-weight: 600; color: #34495e; }
+        .value { color: #7f8c8d; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+        .logo {
+            color: #3498db;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .btn {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if status == 'success' %}
+            <div class="icon success">✅</div>
+            <h1>Descadastro Realizado!</h1>
+            <p class="message">Seu e-mail foi removido da nossa lista de contatos com sucesso.</p>
+            
+            <div class="details">
+                <div class="detail-item">
+                    <span class="label">📧 E-mail:</span>
+                    <span class="value">{{ email }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">📅 Data:</span>
+                    <span class="value">{{ timestamp[:19].replace('T', ' ') }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">📝 Motivo:</span>
+                    <span class="value">{{ motivo }}</span>
+                </div>
+            </div>
+            
+            <p class="message">
+                <strong>Você não receberá mais e-mails desta lista.</strong><br>
+                Caso tenha feito isso por engano, entre em contato conosco.
+            </p>
+        {% else %}
+            <div class="icon error">❌</div>
+            <h1>Erro no Descadastro</h1>
+            <p class="message">{{ message }}</p>
+            <p class="message">Tente novamente ou entre em contato com nosso suporte.</p>
+        {% endif %}
+        
+        <div class="footer">
+            <div class="logo">CAAMG</div>
+            <p>Conselho de Arquitetura e Urbanismo de Minas Gerais</p>
         </div>
-    </body>
-    </html>
-    """
-
-def render_error_page(titulo, message):
-    """Renderiza página de erro para descadastramento"""
-    return f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Erro no Descadastramento</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
-            .error {{ background: #ffe6e6; border: 1px solid #ff9999; padding: 20px; border-radius: 8px; text-align: center; }}
-            .icon {{ font-size: 48px; margin-bottom: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="error">
-            <div class="icon">❌</div>
-            <h2>{titulo}</h2>
-            <p>{message}</p>
-            <p><small>Tente novamente ou entre em contato conosco.</small></p>
-        </div>
-    </body>
-    </html>
-    """
+    </div>
+</body>
+</html>
+"""
 
 @app.route('/')
 def home():
-    """Rota principal com informações básicas da API"""
-    debug_print("Acesso à página inicial")
+    """Página inicial moderna"""
     return """
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>API de Descadastramento - Windows Server</title>
+        <title>Sistema de Blacklist - CAAMG</title>
         <style>
-            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-            .container { text-align: center; }
-            .info { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .server-info { background: #e6f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                color: white;
+                padding: 20px;
+            }
+            .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+            .header { text-align: center; margin-bottom: 50px; }
+            .logo { font-size: 48px; margin-bottom: 20px; }
+            h1 { font-size: 36px; margin-bottom: 10px; }
+            .subtitle { font-size: 18px; opacity: 0.9; }
+            .card {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 30px;
+                margin: 20px 0;
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+            .endpoint {
+                background: rgba(255,255,255,0.05);
+                border-radius: 10px;
+                padding: 15px;
+                margin: 10px 0;
+                border-left: 4px solid #3498db;
+            }
+            .method { 
+                color: #2ecc71; 
+                font-weight: bold; 
+                font-family: monospace;
+            }
+            .url { 
+                color: #f39c12; 
+                font-family: monospace;
+                word-break: break-all;
+            }
+            .description { 
+                color: rgba(255,255,255,0.8); 
+                margin-top: 5px;
+            }
+            .status {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: rgba(46, 204, 113, 0.2);
+                border-radius: 10px;
+                padding: 15px;
+                margin-top: 30px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🚫 API de Descadastramento</h1>
-            <div class="server-info">
-                <h3>🖥️ Windows Server + IIS</h3>
-                <p>Sistema rodando em ambiente Windows</p>
+            <div class="header">
+                <div class="logo">🚫</div>
+                <h1>Sistema de Blacklist</h1>
+                <p class="subtitle">CAAMG - Ubuntu Server</p>
             </div>
-            <div class="info">
-                <h3>Endpoints Disponíveis:</h3>
-                <p><strong>GET /unsubscribe?email=EMAIL</strong> - Descadastrar por e-mail</p>
-                <p><strong>GET /blacklist</strong> - Consultar lista de descadastrados</p>
-                <p><strong>GET /blacklist/hashes</strong> - Consultar hashes da blacklist</p>
-                <p><strong>GET /status</strong> - Status do sistema</p>
+            
+            <div class="card">
+                <h2>📡 Endpoints Disponíveis</h2>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/status</span></div>
+                    <div class="description">Status do sistema e estatísticas</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/unsubscribe?email=EMAIL</span></div>
+                    <div class="description">Descadastrar e-mail da lista</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/blacklist</span></div>
+                    <div class="description">Listar todos os e-mails bloqueados</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/blacklist/hashes</span></div>
+                    <div class="description">Listar hashes MD5 da blacklist</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/check?email=EMAIL</span></div>
+                    <div class="description">Verificar se e-mail está na blacklist</div>
+                </div>
             </div>
-            <p>Sistema funcionando corretamente! ✅</p>
-            <p><small>Integrado com Supabase - Windows Server</small></p>
+            
+            <div class="status">
+                <span>🟢 Sistema Online</span>
+                <span>Ubuntu Server</span>
+            </div>
         </div>
     </body>
     </html>
@@ -167,7 +335,7 @@ def unsubscribe():
     email = request.args.get('email')
     email_id = request.args.get('id')
     motivo = request.args.get('motivo', 'Descadastro via API')
-    format_type = request.args.get('format', 'json')
+    format_type = request.args.get('format', 'html')  # MUDANÇA: HTML por padrão
     
     if not email and not email_id:
         error_msg = 'Email ou ID é obrigatório'
@@ -201,18 +369,18 @@ def unsubscribe():
         existing = supabase.table('advs').select('*').eq('email', email.lower().strip()).execute()
         
         if existing.data:
-            # Atualizar registro existente - USAR data_bloqueio
+            # Atualizar registro existente
             response = supabase.table('advs').update({
                 'blacklist': True,
-                'data_bloqueio': datetime.now().isoformat(),  # CORRIGIDO
+                'data_bloqueio': datetime.now().isoformat(),
                 'motivo': motivo
             }).eq('email', email.lower().strip()).execute()
         else:
-            # Criar novo registro - USAR data_bloqueio
+            # Criar novo registro
             response = supabase.table('advs').insert({
                 'email': email.lower().strip(),
                 'blacklist': True,
-                'data_bloqueio': datetime.now().isoformat(),  # CORRIGIDO
+                'data_bloqueio': datetime.now().isoformat(),
                 'motivo': motivo,
                 'nome': 'Descadastrado'
             }).execute()
