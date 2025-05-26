@@ -455,12 +455,20 @@ def get_blacklist_hashes():
 @app.errorhandler(404)
 def not_found(error):
     """Página de erro 404 personalizada"""
-    return render_error_page("Página Não Encontrada", "A página que você está procurando não existe.")
+    return jsonify({
+        'status': 'error',
+        'message': 'Página não encontrada',
+        'error': '404 Not Found'
+    }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     """Página de erro 500 personalizada"""
-    return render_error_page("Erro Interno", "Ocorreu um erro interno no servidor.")
+    return jsonify({
+        'status': 'error',
+        'message': 'Erro interno do servidor',
+        'error': '500 Internal Server Error'
+    }), 500
 
 if __name__ == '__main__':
     # Configurações para Windows Server
