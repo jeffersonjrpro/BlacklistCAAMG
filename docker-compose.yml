@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  blacklist-api:
+    build: .
+    container_name: blacklist-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - SUPABASE_URL=https://fawgofnpdzyxvgupplwb.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw
+      - FLASK_ENV=production
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - blacklist-network
+
+networks:
+  blacklist-network:
+    driver: bridge 

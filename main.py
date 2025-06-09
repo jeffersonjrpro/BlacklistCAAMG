@@ -1,19 +1,13 @@
 import os
 import sys
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string
 import json
 import hashlib
 from datetime import datetime
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import traceback
-
-# Configurações para Windows Server
-if os.name == 'nt':  # Windows
-    # Configurar encoding
-    import locale
-    locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -24,7 +18,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.FileHandler('/app/logs/app.log', encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -34,10 +28,10 @@ app = Flask(__name__)
 
 # Configurações do Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL', "https://fawgofnpdzyxvgupplwb.supabase.co")
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3ODQ5ODIsImV4cCI6MjA1OTM2MDk4Mn0.yc4Aok9wlVlz5YfHKQsgNREPpyAZ47TW7JBt6bVYZvc")
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw")
 
 # Inicializa cliente Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def debug_print(message):
     """Função para debug com log em arquivo"""
@@ -50,92 +44,236 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
-def render_success_page(message):
-    """Renderiza página de sucesso para descadastramento"""
-    return f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Descadastramento Realizado</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
-            .success {{ background: #e6ffe6; border: 1px solid #99ff99; padding: 20px; border-radius: 8px; text-align: center; }}
-            .icon {{ font-size: 48px; margin-bottom: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="success">
-            <div class="icon">✅</div>
-            <h2>Descadastramento Realizado com Sucesso!</h2>
-            <p>{message}</p>
-            <p><small>Você não receberá mais e-mails desta lista.</small></p>
+# Template HTML moderno para descadastro
+UNSUBSCRIBE_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if status == 'success' %}Descadastro Realizado{% else %}Erro no Descadastro{% endif %} - CAAMG</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .message {
+            color: #7f8c8d;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .email-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        .email-text {
+            font-family: monospace;
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+        .logo {
+            color: #3498db;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .contact-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if status == 'success' %}
+            <div class="icon success">✅</div>
+            <h1>Descadastro Realizado!</h1>
+            <p class="message">Seu e-mail foi removido da nossa lista de contatos com sucesso.</p>
+            
+            <div class="email-display">
+                <div class="email-text">📧 {{ email }}</div>
+            </div>
+            
+            <p class="message">
+                <strong>Você não receberá mais e-mails desta lista.</strong><br>
+                
+            </p>
+            
+            
+        {% else %}
+            <div class="icon error">❌</div>
+            <h1>Erro no Descadastro</h1>
+            <p class="message">{{ message }}</p>
+            <p class="message">Tente novamente ou entre em contato com nosso suporte.</p>
+        {% endif %}
+        
+        <div class="footer">
+            <div class="logo">CAAMG</div>
+            
         </div>
-    </body>
-    </html>
-    """
-
-def render_error_page(titulo, message):
-    """Renderiza página de erro para descadastramento"""
-    return f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Erro no Descadastramento</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
-            .error {{ background: #ffe6e6; border: 1px solid #ff9999; padding: 20px; border-radius: 8px; text-align: center; }}
-            .icon {{ font-size: 48px; margin-bottom: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="error">
-            <div class="icon">❌</div>
-            <h2>{titulo}</h2>
-            <p>{message}</p>
-            <p><small>Tente novamente ou entre em contato conosco.</small></p>
-        </div>
-    </body>
-    </html>
-    """
+    </div>
+</body>
+</html>
+"""
 
 @app.route('/')
 def home():
-    """Rota principal com informações básicas da API"""
-    debug_print("Acesso à página inicial")
+    """Página inicial moderna"""
     return """
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>API de Descadastramento - Windows Server</title>
+        <title>Sistema de Blacklist - CAAMG</title>
         <style>
-            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-            .container { text-align: center; }
-            .info { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .server-info { background: #e6f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                color: white;
+                padding: 20px;
+            }
+            .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+            .header { text-align: center; margin-bottom: 50px; }
+            .logo { font-size: 48px; margin-bottom: 20px; }
+            h1 { font-size: 36px; margin-bottom: 10px; }
+            .subtitle { font-size: 18px; opacity: 0.9; }
+            .card {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 30px;
+                margin: 20px 0;
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+            .endpoint {
+                background: rgba(255,255,255,0.05);
+                border-radius: 10px;
+                padding: 15px;
+                margin: 10px 0;
+                border-left: 4px solid #3498db;
+            }
+            .method { 
+                color: #2ecc71; 
+                font-weight: bold; 
+                font-family: monospace;
+            }
+            .url { 
+                color: #f39c12; 
+                font-family: monospace;
+                word-break: break-all;
+            }
+            .description { 
+                color: rgba(255,255,255,0.8); 
+                margin-top: 5px;
+            }
+            .status {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: rgba(46, 204, 113, 0.2);
+                border-radius: 10px;
+                padding: 15px;
+                margin-top: 30px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🚫 API de Descadastramento</h1>
-            <div class="server-info">
-                <h3>🖥️ Windows Server + IIS</h3>
-                <p>Sistema rodando em ambiente Windows</p>
+            <div class="header">
+                <div class="logo">🚫</div>
+                <h1>Sistema de Blacklist</h1>
+                <p class="subtitle">CAAMG - Docker Container</p>
             </div>
-            <div class="info">
-                <h3>Endpoints Disponíveis:</h3>
-                <p><strong>GET /unsubscribe?email=EMAIL</strong> - Descadastrar por e-mail</p>
-                <p><strong>GET /blacklist</strong> - Consultar lista de descadastrados</p>
-                <p><strong>GET /blacklist/hashes</strong> - Consultar hashes da blacklist</p>
-                <p><strong>GET /status</strong> - Status do sistema</p>
+            
+            <div class="card">
+                <h2>📡 Endpoints Disponíveis</h2>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/status</span></div>
+                    <div class="description">Status do sistema e estatísticas</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/unsubscribe?email=EMAIL</span></div>
+                    <div class="description">Descadastrar e-mail da lista</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/blacklist</span></div>
+                    <div class="description">Listar todos os e-mails bloqueados</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/blacklist/hashes</span></div>
+                    <div class="description">Listar hashes MD5 da blacklist</div>
+                </div>
+                
+                <div class="endpoint">
+                    <div><span class="method">GET</span> <span class="url">/check?email=EMAIL</span></div>
+                    <div class="description">Verificar se e-mail está na blacklist</div>
+                </div>
             </div>
-            <p>Sistema funcionando corretamente! ✅</p>
-            <p><small>Integrado com Supabase - Windows Server</small></p>
+            
+            <div class="status">
+                <span>🟢 Sistema Online</span>
+                <span>Docker Container</span>
+            </div>
         </div>
     </body>
     </html>
@@ -153,7 +291,7 @@ def status():
     
     status_info = {
         'status': 'running',
-        'platform': 'Windows Server + IIS',
+        'platform': 'Docker Container',
         'python_version': sys.version,
         'supabase': supabase_status,
         'timestamp': datetime.now().isoformat()
@@ -161,64 +299,124 @@ def status():
     
     return jsonify(status_info)
 
-@app.route('/unsubscribe', methods=['GET'])
+@app.route('/unsubscribe')
 def unsubscribe():
-    """Endpoint para descadastramento de emails"""
+    """Descadastrar email da lista"""
     email = request.args.get('email')
+    email_id = request.args.get('id')
+    motivo = request.args.get('motivo', 'Descadastro via API')
+    format_type = request.args.get('format', 'html')  # MUDANÇA: HTML por padrão
     
-    debug_print(f"=== DESCADASTRO === Email recebido: {email}")
-    
-    if not email:
-        debug_print("Erro: Email não fornecido")
-        return render_error_page("Email obrigatório", "Forneça um email válido.")
-    
-    if not is_valid_email(email):
-        debug_print(f"Erro: Email inválido: {email}")
-        return render_error_page("Email inválido", "Formato de email inválido.")
+    if not email and not email_id:
+        error_msg = 'Email ou ID é obrigatório'
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='error', message=error_msg)
+        return jsonify({'status': 'error', 'message': error_msg}), 400
     
     try:
-        debug_print(f"Tentando inserir no Supabase: {email}")
-        
-        # Inserção no banco
-        result = supabase.table('advs').insert({
-            'email': email,
-            'blacklist': True,
-            'data_bloqueio': datetime.now().isoformat(),
-            'motivo': 'Descadastro via link',
-            'gestor': 'Sistema Windows',
-            'nome': 'Descadastrado'
-        }).execute()
-        
-        debug_print(f"Resultado Supabase: {len(result.data)} registros inseridos")
-        
-        if result.data:
-            debug_print("SUCESSO! Renderizando página de sucesso")
-            return render_success_page(f"Email {email} descadastrado com sucesso!")
-        else:
-            debug_print("FALHA! Nenhum dado retornado")
-            return render_error_page("Erro", "Falha ao descadastrar.")
+        if email_id:
+            # Buscar por hash MD5
+            response = supabase.table('advs').select('*').execute()
+            target_record = None
             
+            for record in response.data:
+                if record.get('email'):
+                    record_hash = hashlib.md5(record['email'].lower().strip().encode()).hexdigest()
+                    if record_hash == email_id.lower():
+                        target_record = record
+                        email = record['email']
+                        break
+            
+            if not target_record:
+                error_msg = 'Email não encontrado'
+                if format_type == 'html':
+                    return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                        status='error', message=error_msg)
+                return jsonify({'status': 'error', 'message': error_msg}), 404
+        
+        # Verificar se email existe na tabela
+        existing = supabase.table('advs').select('*').eq('email', email.lower().strip()).execute()
+        
+        if existing.data:
+            # Atualizar registro existente
+            response = supabase.table('advs').update({
+                'blacklist': True,
+                'data_bloqueio': datetime.now().isoformat(),
+                'motivo': motivo
+            }).eq('email', email.lower().strip()).execute()
+        else:
+            # Criar novo registro
+            response = supabase.table('advs').insert({
+                'email': email.lower().strip(),
+                'blacklist': True,
+                'data_bloqueio': datetime.now().isoformat(),
+                'motivo': motivo,
+                'nome': 'Descadastrado'
+            }).execute()
+        
+        logger.info(f"✅ Email {email} adicionado à blacklist")
+        
+        success_msg = f'Email {email} descadastrado com sucesso!'
+        timestamp = datetime.now().isoformat()
+        
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='success', email=email, motivo=motivo, timestamp=timestamp)
+        
+        return jsonify({
+            'status': 'success',
+            'message': success_msg,
+            'email': email,
+            'motivo': motivo,
+            'timestamp': timestamp,
+            'server': 'Docker Container'
+        })
+        
     except Exception as e:
-        debug_print(f"ERRO: {str(e)}")
-        debug_print(f"Traceback: {traceback.format_exc()}")
-        return render_error_page("Erro interno", f"Erro: {str(e)}")
+        logger.error(f"❌ Erro ao processar unsubscribe: {str(e)}")
+        error_msg = f'Erro interno: {str(e)}'
+        
+        if format_type == 'html':
+            return render_template_string(UNSUBSCRIBE_TEMPLATE, 
+                status='error', message=error_msg)
+        
+        return jsonify({
+            'status': 'error',
+            'message': 'Erro interno do servidor',
+            'error': str(e),
+            'server': 'Docker Container'
+        }), 500
 
 @app.route('/blacklist')
 def get_blacklist():
-    """Rota que retorna todos os emails na blacklist"""
+    """Listar todos os emails na blacklist"""
     try:
-        response = supabase.table('advs').select('email, data_bloqueio, motivo').eq('blacklist', True).execute()
+        response = supabase.table('advs').select('email, data_bloqueio, motivo, nome').eq('blacklist', True).execute()  # CORRIGIDO
+        
+        blacklist_data = []
+        for record in response.data:
+            blacklist_data.append({
+                'email': record.get('email'),
+                'data_bloqueio': record.get('data_bloqueio'),  # CORRIGIDO
+                'motivo': record.get('motivo'),
+                'nome': record.get('nome')
+            })
+        
         return jsonify({
             'status': 'success',
-            'total': len(response.data),
-            'blacklist': response.data,
-            'server': 'Windows Server + IIS'
+            'total': len(blacklist_data),
+            'blacklist': blacklist_data,
+            'server': 'Docker Container',
+            'timestamp': datetime.now().isoformat()
         })
+        
     except Exception as e:
+        logger.error(f"❌ Erro ao buscar blacklist: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': 'Erro ao carregar blacklist',
-            'error': str(e)
+            'error': str(e),
+            'server': 'Docker Container'
         }), 500
 
 @app.route('/blacklist/hashes')
@@ -236,7 +434,7 @@ def get_blacklist_hashes():
             'status': 'success',
             'total': len(hashes),
             'blacklist': hashes,
-            'server': 'Windows Server + IIS'
+            'server': 'Docker Container'
         })
     except Exception as e:
         return jsonify({
@@ -248,26 +446,29 @@ def get_blacklist_hashes():
 @app.errorhandler(404)
 def not_found(error):
     """Página de erro 404 personalizada"""
-    return render_error_page("Página Não Encontrada", "A página que você está procurando não existe.")
+    return jsonify({
+        'status': 'error',
+        'message': 'Página não encontrada',
+        'error': '404 Not Found'
+    }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     """Página de erro 500 personalizada"""
-    return render_error_page("Erro Interno", "Ocorreu um erro interno no servidor.")
+    return jsonify({
+        'status': 'error',
+        'message': 'Erro interno do servidor',
+        'error': '500 Internal Server Error'
+    }), 500
 
 if __name__ == '__main__':
-    # Configurações para Windows Server
+    # Configurações para Docker
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
     debug_print(f"Iniciando servidor na porta {port}")
     debug_print(f"Modo debug: {debug_mode}")
+    debug_print("🐳 Executando em container Docker")
     
-    # Para Windows Server, usar waitress ao invés do servidor Flask padrão
-    try:
-        from waitress import serve
-        debug_print("Usando Waitress WSGI Server")
-        serve(app, host='0.0.0.0', port=port, threads=6)
-    except ImportError:
-        debug_print("Waitress não encontrado, usando servidor Flask padrão")
-        app.run(host='0.0.0.0', port=port, debug=debug_mode)
+    # Para produção em Docker, usar apenas Flask
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
