@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  blacklist-api:
+    image: python:3.9-slim
+    ports:
+      - "80:5000"
+    environment:
+      - SUPABASE_URL=https://fawgofnpdzyxvgupplwb.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw
+      - FLASK_ENV=production
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    command: >
+      bash -c "
+      echo '=== CAAMAIL DEBUG MODE - $(date) ===' &&
+      
+      echo '[1/10] Testando sistema básico...' &&
+      whoami && pwd && python3 --version && pip --version &&
+      
+      echo '[2/10] Testando conectividade...' &&
+      ping -c 1 8.8.8.8 || echo 'Sem conectividade externa' &&
+      
+      echo '[3/10] Atualizando repositórios...' &&
+      (apt-get update -qq && echo 'OK: apt-get update') || (echo 'ERRO: apt-get update' && exit 1) &&
+      
+      echo '[4/10] Instalando curl...' &&
+      (apt-get install -y -qq curl && echo 'OK: curl instalado') || (echo 'ERRO: curl não instalado' && exit 1) &&
+      
+      echo '[5/10] Testando curl...' &&
+      curl --version &&
+      
+      echo '[6/10] Testando GitHub...' &&
+      (curl -s -I https://github.com | head -1 && echo 'OK: GitHub acessível') || (echo 'ERRO: GitHub inacessível' && exit 1) &&
+      
+      echo '[7/10] Baixando main.py...' &&
+      (curl -s -L https://raw.githubusercontent.com/jeffersonjrpro/BlacklistCAAMG/main/main.py -o main.py && echo 'OK: main.py baixado') || (echo 'ERRO: Falha ao baixar main.py' && exit 1) &&
+      
+      echo '[8/10] Verificando arquivo...' &&
+      ls -la main.py && head -3 main.py &&
+      
+      echo '[9/10] Instalando Flask apenas...' &&
+      (pip install --no-cache-dir Flask==2.3.3 && echo 'OK: Flask instalado') || (echo 'ERRO: Flask não instalado' && exit 1) &&
+      
+      echo '[10/10] Testando Python...' &&
+      python3 -c 'import flask; print(\"Flask OK:\", flask.__version__)' &&
+      
+      echo '=== TESTE SIMPLES ===' &&
+      python3 -c '
+from flask import Flask
+app = Flask(__name__)
+
+@app.route(\"/\")
+def hello():
+    return \"<h1>CAAMAIL API Funcionando!</h1><p>$(date)</p>\"
+
+@app.route(\"/test\")
+def test():
+    return {\"status\": \"OK\", \"message\": \"Container funcionando\"}
+
+if __name__ == \"__main__\":
+    print(\"Iniciando Flask na porta 5000...\")
+    app.run(host=\"0.0.0.0\", port=5000, debug=True)
+' &&
+      
+      echo 'Se chegou aqui, o problema não é do container!' &&
+      tail -f /dev/null
+      "
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 2 

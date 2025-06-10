@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  caamail-blacklist:
+    image: python:3.9-slim
+    ports:
+      - target: 5000
+        published: 5000
+        protocol: tcp
+        mode: ingress
+    environment:
+      SUPABASE_URL: "https://fawgofnpdzyxvgupplwb.supabase.co"
+      SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw"
+      FLASK_ENV: "production"
+      TZ: "America/Sao_Paulo"
+    working_dir: /app
+    command: |
+      sh -c "
+        apt-get update -qq && 
+        apt-get install -y -qq gcc curl && 
+        pip install --quiet Flask==2.3.3 supabase==1.3.0 python-dotenv==1.0.0 gunicorn==21.2.0 Werkzeug==2.3.7 && 
+        curl -s -o main.py https://raw.githubusercontent.com/jeffersonjrpro/BlacklistCAAMG/main/main.py && 
+        python main.py
+      "
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    networks:
+      - blacklist-net
+
+networks:
+  blacklist-net:
+    driver: overlay 

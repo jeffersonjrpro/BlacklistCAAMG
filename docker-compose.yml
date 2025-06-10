@@ -1,27 +1,57 @@
 version: '3.8'
 
 services:
-  blacklist-api:
+  caamail-app:
     build: .
-    container_name: blacklist-api
+    container_name: caamail-app
     restart: unless-stopped
-    ports:
-      - "5000:5000"
     environment:
       - SUPABASE_URL=https://fawgofnpdzyxvgupplwb.supabase.co
       - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw
       - FLASK_ENV=production
       - TZ=America/Sao_Paulo
     volumes:
-      - ./logs:/app/logs
+      - app-logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/status"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
     networks:
-      - blacklist-network
+      - caamail-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: caamail-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-logs:/var/log/nginx
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      caamail-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - caamail-network
+
+volumes:
+  app-logs:
+    driver: local
+  nginx-logs:
+    driver: local
+  nginx-cache:
+    driver: local
 
 networks:
-  blacklist-network:
-    driver: bridge 
+  caamail-network:
+    driver: bridge
+    name: caamail-network 

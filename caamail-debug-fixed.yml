@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  blacklist-api:
+    image: python:3.9-slim
+    ports:
+      - "80:5000"
+    environment:
+      SUPABASE_URL: "https://fawgofnpdzyxvgupplwb.supabase.co"
+      SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw"
+      FLASK_ENV: "production"
+      TZ: "America/Sao_Paulo"
+      PYTHONUNBUFFERED: "1"
+    working_dir: /app
+    command:
+      - bash
+      - -c
+      - |
+        echo "=== CAAMAIL DEBUG MODE ==="
+        echo "[1/5] Testando Python..."
+        python3 --version
+        pip --version
+        
+        echo "[2/5] Instalando Flask..."
+        pip install Flask==2.3.3
+        
+        echo "[3/5] Criando app simples..."
+        cat > app.py << 'END'
+        from flask import Flask
+        app = Flask(__name__)
+        
+        @app.route('/')
+        def home():
+            return '<h1>CAAMAIL API OK!</h1>'
+        
+        @app.route('/test')
+        def test():
+            return {'status': 'OK'}
+        
+        if __name__ == '__main__':
+            app.run(host='0.0.0.0', port=5000)
+        END
+        
+        echo "[4/5] Verificando arquivo..."
+        cat app.py
+        
+        echo "[5/5] Iniciando aplicação..."
+        python3 app.py
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 2 

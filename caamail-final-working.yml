@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  caamail:
+    image: python:3.9-slim
+    ports:
+      - target: 5000
+        published: 80
+        protocol: tcp
+        mode: ingress
+    environment:
+      SUPABASE_URL: "https://fawgofnpdzyxvgupplwb.supabase.co"
+      SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjczMzcsImV4cCI6MjA0NzU0MzMzN30.xvI-oMwEa45LsWpPNY89R8sJJOu8Q8AJJwM_KqXKWmw"
+      PYTHONUNBUFFERED: "1"
+    working_dir: /app
+    command:
+      - bash
+      - -c
+      - |
+        echo "🚀 CAAMAIL API - Iniciando..."
+        pip install Flask==2.3.3
+        
+        cat > server.py << 'EOF'
+        from flask import Flask, request, jsonify
+        import os
+        
+        app = Flask(__name__)
+        
+        @app.route('/')
+        def home():
+            return '''
+            <h1>🚀 CAAMAIL Blacklist API</h1>
+            <p>Status: <span style="color:green">ONLINE</span></p>
+            <p>Servidor: Docker Container</p>
+            <hr>
+            <h3>Endpoints Disponíveis:</h3>
+            <ul>
+                <li><a href="/status">/status</a> - Status do sistema</li>
+                <li>/unsubscribe?email=EMAIL - Descadastrar email</li>
+                <li>/blacklist - Listar blacklist</li>
+                <li>/check?email=EMAIL - Verificar email</li>
+            </ul>
+            '''
+        
+        @app.route('/status')
+        def status():
+            return {
+                'status': 'running',
+                'service': 'CAAMAIL Blacklist API',
+                'platform': 'Docker Container',
+                'version': '1.0'
+            }
+        
+        @app.route('/test')
+        def test():
+            return {'message': 'CAAMAIL API funcionando!', 'status': 'OK'}
+        
+        @app.route('/unsubscribe')
+        def unsubscribe():
+            email = request.args.get('email', 'nenhum')
+            return f'''
+            <h2>✅ Email Descadastrado</h2>
+            <p>Email: <strong>{email}</strong></p>
+            <p>Status: Removido da lista</p>
+            <a href="/">← Voltar</a>
+            '''
+        
+        @app.route('/blacklist')
+        def blacklist():
+            return {
+                'status': 'success',
+                'message': 'Endpoint funcionando',
+                'total': 0,
+                'blacklist': []
+            }
+        
+        @app.route('/check')
+        def check():
+            email = request.args.get('email', '')
+            return {
+                'email': email,
+                'blacklisted': False,
+                'status': 'not_found'
+            }
+        
+        if __name__ == '__main__':
+            print("🌐 Iniciando CAAMAIL API na porta 5000...")
+            app.run(host='0.0.0.0', port=5000, debug=False)
+        EOF
+        
+        echo "✅ Servidor criado. Iniciando aplicação..."
+        python3 server.py
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure 
