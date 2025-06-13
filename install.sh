@@ -66,7 +66,7 @@ docker-compose ps
 
 # Testar aplicação
 echo "🧪 Testando aplicação..."
-if curl -f http://localhost/status > /dev/null 2>&1; then
+if curl -f http://localhost:8080/status > /dev/null 2>&1; then
     echo "✅ Aplicação funcionando!"
 else
     echo "⚠️  Aplicação ainda inicializando..."
@@ -77,9 +77,9 @@ echo "🎉 INSTALAÇÃO CONCLUÍDA!"
 echo "========================"
 echo ""
 echo "📍 URLs de Acesso:"
-echo "   • Local: http://localhost"
-echo "   • Status: http://localhost/status"
-echo "   • Nginx Health: http://localhost/nginx-health"
+echo "   • Local: http://localhost:8080"
+echo "   • Status: http://localhost:8080/status"
+echo "   • Nginx Health: http://localhost:8080/nginx-health"
 echo ""
 echo "🔧 Comandos Úteis:"
 echo "   • Ver logs: docker-compose logs -f"
@@ -88,6 +88,6 @@ echo "   • Reiniciar: docker-compose restart"
 echo "   • Rebuild: docker-compose build --no-cache && docker-compose up -d"
 echo ""
 echo "📋 Configurar DNS:"
-echo "   caamail.caamg.com.br → $(curl -s ifconfig.me)"
+echo "   caamail.caamg.com.br:8080 → $(curl -s ifconfig.me)"
 echo ""
 echo "✅ Setup completo!"
