@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  caamail-api:
+    image: python:3.9-slim
+    environment:
+      - SUPABASE_URL=https://fawgofnpdzyxvgupplwb.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhd2dvZm5wZHp5eHZndXBwbHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3ODQ5ODIsImV4cCI6MjA1OTM2MDk4Mn0.yc4Aok9wlVlz5YfHKQsgNREPpyAZ47TW7JBt6bVYZvc
+      - FLASK_ENV=production
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        echo "🚀 CAAMAIL Blacklist API - Iniciando..."
+        apt-get update -qq
+        apt-get install -y -qq gcc curl procps wget ca-certificates
+        pip install --no-cache-dir Flask==2.3.3 supabase==1.3.0 python-dotenv==1.0.0 gunicorn==21.2.0 Werkzeug==2.3.7
+        curl -s -L -f -o main.py https://raw.githubusercontent.com/jeffersonjrpro/BlacklistCAAMG/main/main.py
+        mkdir -p /app/logs
+        echo "✅ Configuração concluída! Iniciando servidor..."
+        python main.py
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+        failure_action: rollback
+      labels:
+        # Habilitar Traefik
+        - "traefik.enable=true"
+        # Configurar roteamento por domínio
+        - "traefik.http.routers.caamail.rule=Host(`caamail.caamg.com.br`)"
+        - "traefik.http.routers.caamail.entrypoints=web,websecure"
+        # Configurar serviço
+        - "traefik.http.services.caamail.loadbalancer.server.port=5000"
+        # SSL automático
+        - "traefik.http.routers.caamail.tls=true"
+        - "traefik.http.routers.caamail.tls.certresolver=letsencrypt"
+        # Middleware de redirecionamento HTTPS
+        - "traefik.http.routers.caamail-redirect.rule=Host(`caamail.caamg.com.br`)"
+        - "traefik.http.routers.caamail-redirect.entrypoints=web"
+        - "traefik.http.routers.caamail-redirect.middlewares=redirect-to-https"
+        - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+        # Labels adicionais
+        - "app=caamail"
+        - "version=1.2"
+        - "description=CAAMAIL Blacklist API - Portainer"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true 
